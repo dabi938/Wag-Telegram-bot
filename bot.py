@@ -13,7 +13,7 @@ OWNER_USERNAME = '@phinex938'
 
 # Start command handler
 async def start(update: Update, context: CallbackContext) -> None:
-    await update.message.reply_text("Hi WllCome! Send me a message or any type of file, and I'll forward it to Phinex.")
+    await update.message.reply_text("Hi! I'll forward Your message or any type of file to Phinex.")
 
 # Message handler
 async def forward_message(update: Update, context: CallbackContext) -> None:
