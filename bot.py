@@ -1,3 +1,4 @@
+import time
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackContext, filters
 
@@ -62,9 +63,11 @@ async def forward_file(update: Update, context: CallbackContext) -> None:
         await update.message.reply_text("Sorry, I couldn't find the owner's chat ID.")
         return
 
-    # Forward the file to the owner
+    # Forward the file to the owner based on its type
     if update.message.photo:
         await context.bot.send_photo(chat_id=owner_chat_id, photo=file_id)
+    elif update.message.video:
+        await context.bot.send_video(chat_id=owner_chat_id, video=file_id)
     else:
         await context.bot.send_document(chat_id=owner_chat_id, document=file_id)
 
@@ -80,18 +83,26 @@ async def get_chat_id_by_username(context: CallbackContext, username: str) -> in
         print(f"Error resolving username to chat_id: {e}")
         return None
 
-# Main function
+# Main function with restart mechanism
 def main():
-    # Create the application
-    application = Application.builder().token(BOT_TOKEN).build()
+    while True:  # Start an infinite loop for restart handling
+        try:
+            # Create the application
+            application = Application.builder().token(BOT_TOKEN).build()
 
-    # Add handlers
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, forward_message))
-    application.add_handler(MessageHandler(filters.ALL, forward_file))
+            # Add handlers
+            application.add_handler(CommandHandler("start", start))
+            application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, forward_message))
+            application.add_handler(MessageHandler(filters.ALL, forward_file))
 
-    # Start the bot
-    application.run_polling()
+            # Start the bot
+            print("Bot is running...")
+            application.run_polling()
+
+        except Exception as e:
+            print(f"Bot encountered an error: {e}")
+            print("Restarting bot...")
+            time.sleep(5)  # Wait for a while before restarting the bot to prevent rapid restarts
 
 if __name__ == "__main__":
     main()
