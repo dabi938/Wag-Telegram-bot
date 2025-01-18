@@ -11,6 +11,9 @@ OWNER_CHAT_ID = 6742597078  # Replace with the actual Chat ID
 # Replace with the username of the bot owner
 OWNER_USERNAME = '@phinex938'
 
+# To track sent messages and avoid duplication
+sent_messages = set()
+
 # Start command handler
 async def start(update: Update, context: CallbackContext) -> None:
     await update.message.reply_text("Hi! I'll forward Your message or any type of file to Phinex.")
@@ -19,6 +22,13 @@ async def start(update: Update, context: CallbackContext) -> None:
 async def forward_message(update: Update, context: CallbackContext) -> None:
     user_message = update.message.text
     user_info = f"Message from @{update.message.chat.username or 'ID: {update.message.chat.id}'}:\n\n"
+
+    # Prevent duplicate message forwarding
+    if user_message in sent_messages:
+        return  # Skip if the message has already been sent
+
+    # Mark this message as sent
+    sent_messages.add(user_message)
 
     # Use hardcoded OWNER_CHAT_ID, fallback to dynamic username resolution if needed
     owner_chat_id = OWNER_CHAT_ID or await get_chat_id_by_username(context, OWNER_USERNAME)
@@ -93,7 +103,7 @@ def main():
             # Add handlers
             application.add_handler(CommandHandler("start", start))
             application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, forward_message))
-            application.add_handler(MessageHandler(filters.ALL, forward_file))
+            application.add_handler(MessageHandler(filters.ALL & ~filters.TEXT, forward_file))
 
             # Start the bot
             print("Bot is running...")
