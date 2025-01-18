@@ -21,7 +21,7 @@ async def start(update: Update, context: CallbackContext) -> None:
 # Message handler
 async def forward_message(update: Update, context: CallbackContext) -> None:
     user_message = update.message.text
-    user_info = f"Message from @{update.message.chat.username or 'ID: {update.message.chat.id}'}:\n\n"
+    user_info = f"Message from @{update.message.chat.username if update.message.chat.username else f'ID: {update.message.chat.id}'}:\n\n"
 
     # Prevent duplicate message forwarding
     if user_message in sent_messages:
