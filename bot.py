@@ -18,7 +18,7 @@ async def start(update: Update, context: CallbackContext) -> None:
 # Message handler
 async def forward_message(update: Update, context: CallbackContext) -> None:
     user_message = update.message.text
-    user_info = f"Message from @{update.message.chat.username or 'Unknown'} (ID: {update.message.chat.id}):\n"
+    user_info = f"Message from @{update.message.chat.username or 'ID: {update.message.chat.id}'}:\n\n"
 
     # Use hardcoded OWNER_CHAT_ID, fallback to dynamic username resolution if needed
     owner_chat_id = OWNER_CHAT_ID or await get_chat_id_by_username(context, OWNER_USERNAME)
