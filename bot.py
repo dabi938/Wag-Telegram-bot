@@ -1,4 +1,3 @@
-import os
 import time
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackContext, filters
@@ -94,28 +93,26 @@ async def get_chat_id_by_username(context: CallbackContext, username: str) -> in
         print(f"Error resolving username to chat_id: {e}")
         return None
 
-# Main function with webhook support
+# Main function with restart mechanism
 def main():
-    try:
-        # Create the application
-        application = Application.builder().token(BOT_TOKEN).build()
+    while True:  # Start an infinite loop for restart handling
+        try:
+            # Create the application
+            application = Application.builder().token(BOT_TOKEN).build()
 
-        # Add handlers
-        application.add_handler(CommandHandler("start", start))
-        application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, forward_message))
-        application.add_handler(MessageHandler(filters.ALL & ~filters.TEXT, forward_file))
+            # Add handlers
+            application.add_handler(CommandHandler("start", start))
+            application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, forward_message))
+            application.add_handler(MessageHandler(filters.ALL & ~filters.TEXT, forward_file))
 
-        # Set the webhook URL
-        webhook_url = os.getenv("WEBHOOK_URL", "https://wag-telegram-bot-ju8p.vercel.app/")  # Replace with your deployment URL
+            # Start the bot
+            print("Bot is running...")
+            application.run_polling()
 
-        # Run the bot with webhooks
-        application.run_webhook(
-            listen="0.0.0.0",  # Listen on all available interfaces
-            port=int(os.getenv("PORT", 5000)),  # Use PORT from environment or default to 5000
-            webhook_url=webhook_url  # Telegram will send updates to this URL
-        )
-    except Exception as e:
-        print(f"Bot encountered an error: {e}")
+        except Exception as e:
+            print(f"Bot encountered an error: {e}")
+            print("Restarting bot...")
+            time.sleep(5)  # Wait for a while before restarting the bot to prevent rapid restarts
 
 if __name__ == "__main__":
     main()
