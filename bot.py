@@ -52,5 +52,6 @@ async def telegram_webhook(request: Request):
 
 @app.on_event("startup")
 async def on_startup():
-    webhook_url = f"https://<YOUR_VERCEL_DEPLOYMENT_URL>/webhook"  # Replace with your Vercel deployment URL
+    webhook_url = f" https://wag-telegram-5iyohyk4o-dabis-projects-f3c1438b.vercel.app "  # Replace with your Vercel deployment URL
     await application.bot.set_webhook(url=webhook_url)
+
