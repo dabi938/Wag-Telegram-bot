@@ -1,6 +1,7 @@
 import time
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackContext, filters
+import asyncio
 
 # Replace with your Bot Token
 BOT_TOKEN = '7577327684:AAHBVsQWRg5S54HdYWSZ5fsqTCOtfRAfby8'
@@ -16,7 +17,10 @@ sent_messages = set()
 
 # Start command handler
 async def start(update: Update, context: CallbackContext) -> None:
-    await update.message.reply_text("Hi! I'll forward Your message or any type of file to Phinex.")
+    if update.message.chat_id == OWNER_CHAT_ID:
+        # Do not send the message to the owner
+        return
+    await update.message.reply_text("Hi! Wellcome I'll forward Your message or any type of file to Phinex.")
 
 # Message handler
 async def forward_message(update: Update, context: CallbackContext) -> None:
@@ -93,6 +97,24 @@ async def forward_file(update: Update, context: CallbackContext) -> None:
     # Notify the user
     await update.message.reply_text("Your file has been sent!")
 
+# Forwarded message handler
+async def forward_forwarded_message(update: Update, context: CallbackContext) -> None:
+    if update.message.forward_from:
+        forwarded_from = update.message.forward_from.username or f"ID: {update.message.forward_from.id}"
+        user_info = f"Forwarded message from @{forwarded_from}:\n\n"
+
+        # Use hardcoded OWNER_CHAT_ID, fallback to dynamic username resolution if needed
+        owner_chat_id = OWNER_CHAT_ID or await get_chat_id_by_username(context, OWNER_USERNAME)
+        if not owner_chat_id:
+            await update.message.reply_text("Sorry, I couldn't find the owner's chat ID.")
+            return
+
+        # Forward the message to the owner
+        await context.bot.send_message(chat_id=owner_chat_id, text=user_info + update.message.text)
+
+        # Notify the user
+        await update.message.reply_text("Your forwarded message has been sent!")
+
 # Function to resolve username to chat_id
 async def get_chat_id_by_username(context: CallbackContext, username: str) -> int:
     try:
@@ -101,6 +123,15 @@ async def get_chat_id_by_username(context: CallbackContext, username: str) -> in
     except Exception as e:
         print(f"Error resolving username to chat_id: {e}")
         return None
+
+# Function to send periodic messages
+async def send_periodic_message(application: Application) -> None:
+    while True:
+        try:
+            await application.bot.send_message(chat_id=OWNER_CHAT_ID, text="....")
+            await asyncio.sleep(420)  # Wait for 7 minutes (7 * 60 seconds)
+        except Exception as e:
+            print(f"Error sending periodic message: {e}")
 
 # Main function with restart mechanism
 def main():
@@ -113,6 +144,10 @@ def main():
             application.add_handler(CommandHandler("start", start))
             application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, forward_message))
             application.add_handler(MessageHandler(filters.ALL & ~filters.TEXT, forward_file))
+            application.add_handler(MessageHandler(filters.FORWARDED, forward_forwarded_message))
+
+            # Start the periodic message task
+            application.job_queue.run_once(lambda _: asyncio.create_task(send_periodic_message(application)), 0)
 
             # Start the bot
             print("Bot is running...")
