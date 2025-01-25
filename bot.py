@@ -1,132 +1,127 @@
 import time
-import logging
-import asyncio
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackContext, filters
-from telegram.error import TimedOut, NetworkError, RetryAfter, BadRequest
 
 # Replace with your Bot Token
 BOT_TOKEN = '7577327684:AAHBVsQWRg5S54HdYWSZ5fsqTCOtfRAfby8'
 
-# Replace with the hardcoded Chat ID of the bot owner
-OWNER_CHAT_ID = 6742597078
+# Replace with the hardcoded Chat ID of the bot owner (once resolved)
+OWNER_CHAT_ID = 6742597078  # Replace with the actual Chat ID
 
-# Track sent messages to avoid duplication
+# Replace with the username of the bot owner
+OWNER_USERNAME = '@phinex938'
+
+# To track sent messages and avoid duplication
 sent_messages = set()
 
-# Set up logging
-logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
-
-# Start command
+# Start command handler
 async def start(update: Update, context: CallbackContext) -> None:
-    await update.message.reply_text("Hi! I'll forward your message or any type of file to Phinex.")
+    await update.message.reply_text("Hi! I'll forward Your message or any type of file to Phinex.")
 
-# Message handler (Handles text messages)
+# Message handler
 async def forward_message(update: Update, context: CallbackContext) -> None:
     user_message = update.message.text
-    user_username = update.message.chat.username
-    user_identifier = f"@{user_username}" if user_username else f"ID: {update.message.chat.id}"
+    user_info = f"Message from @{update.message.chat.username if update.message.chat.username else f'ID: {update.message.chat.id}'}:\n\n"
 
+    # Prevent duplicate message forwarding
     if user_message in sent_messages:
-        return
+        return  # Skip if the message has already been sent
+
+    # Mark this message as sent
     sent_messages.add(user_message)
 
-    try:
-        logging.info(f"Forwarding message: {user_message} from {user_identifier}")
-        await context.bot.send_message(chat_id=OWNER_CHAT_ID, text=f"Message from {user_identifier}: \n\n{user_message}")
-        await update.message.reply_text("Your message has been forwarded.")
-    except Exception as e:
-        logging.error(f"Error forwarding message: {e}")
-        await update.message.reply_text("There was an issue forwarding your message. Please try again.")
+    # Use hardcoded OWNER_CHAT_ID, fallback to dynamic username resolution if needed
+    owner_chat_id = OWNER_CHAT_ID or await get_chat_id_by_username(context, OWNER_USERNAME)
+    if not owner_chat_id:
+        await update.message.reply_text("Sorry, I couldn't find the owner's chat ID.")
+        return
 
-# File handler (Handles all file types including documents, photos, etc.)
+    # Send the message to the owner
+    await context.bot.send_message(chat_id=owner_chat_id, text=user_info + user_message)
+
+    # Notify the user
+    await update.message.reply_text("Your message has been sent!")
+
+# File handler
 async def forward_file(update: Update, context: CallbackContext) -> None:
-    user_username = update.message.chat.username
-    user_identifier = f"@{user_username}" if user_username else f"ID: {update.message.chat.id}"
-    
+    # Check for different file types
+    file = None
+
+    if update.message.photo:
+        # Get the highest resolution photo
+        file = update.message.photo[-1]
+    elif update.message.document:
+        file = update.message.document
+    elif update.message.audio:
+        file = update.message.audio
+    elif update.message.video:
+        file = update.message.video
+    elif update.message.voice:
+        file = update.message.voice
+    elif update.message.video_note:
+        file = update.message.video_note
+
+    if not file:
+        await update.message.reply_text("Unsupported file type.")
+        return
+
+    file_id = file.file_id
+
+    # Gather user information
+    user_info = f"File from @{update.message.chat.username if update.message.chat.username else f'ID: {update.message.chat.id}'}:\n"
+
+    # Use hardcoded OWNER_CHAT_ID, fallback to dynamic username resolution if needed
+    owner_chat_id = OWNER_CHAT_ID or await get_chat_id_by_username(context, OWNER_USERNAME)
+    if not owner_chat_id:
+        await update.message.reply_text("Sorry, I couldn't find the owner's chat ID.")
+        return
+
+    # Forward the file to the owner with user info as a caption
+    if update.message.photo:
+        await context.bot.send_photo(chat_id=owner_chat_id, photo=file_id, caption=user_info)
+    elif update.message.video:
+        await context.bot.send_video(chat_id=owner_chat_id, video=file_id, caption=user_info)
+    elif update.message.audio:
+        await context.bot.send_audio(chat_id=owner_chat_id, audio=file_id, caption=user_info)
+    elif update.message.voice:
+        await context.bot.send_voice(chat_id=owner_chat_id, voice=file_id, caption=user_info)
+    elif update.message.document:
+        await context.bot.send_document(chat_id=owner_chat_id, document=file_id, caption=user_info)
+    elif update.message.video_note:
+        await context.bot.send_video_note(chat_id=owner_chat_id, video_note=file_id)
+
+    # Notify the user
+    await update.message.reply_text("Your file has been sent!")
+
+# Function to resolve username to chat_id
+async def get_chat_id_by_username(context: CallbackContext, username: str) -> int:
     try:
-        logging.info(f"Forwarding file from {user_identifier}")
-        if update.message.document:
-            await context.bot.send_document(chat_id=OWNER_CHAT_ID, document=update.message.document.file_id)
-            await context.bot.send_message(chat_id=OWNER_CHAT_ID, text=f"Document from {user_identifier}")
-            await update.message.reply_text("Your document has been forwarded.")
-        elif update.message.photo:
-            photo = update.message.photo[-1]
-            await context.bot.send_photo(chat_id=OWNER_CHAT_ID, photo=photo.file_id)
-            await context.bot.send_message(chat_id=OWNER_CHAT_ID, text=f"Photo from {user_identifier}")
-            await update.message.reply_text("Your photo has been forwarded.")
-        elif update.message.video:
-            await context.bot.send_video(chat_id=OWNER_CHAT_ID, video=update.message.video.file_id)
-            await context.bot.send_message(chat_id=OWNER_CHAT_ID, text=f"Video from {user_identifier}")
-            await update.message.reply_text("Your video has been forwarded.")
-        elif update.message.audio:
-            await context.bot.send_audio(chat_id=OWNER_CHAT_ID, audio=update.message.audio.file_id)
-            await context.bot.send_message(chat_id=OWNER_CHAT_ID, text=f"Audio from {user_identifier}")
-            await update.message.reply_text("Your audio has been forwarded.")
-        elif update.message.voice:
-            await context.bot.send_voice(chat_id=OWNER_CHAT_ID, voice=update.message.voice.file_id)
-            await context.bot.send_message(chat_id=OWNER_CHAT_ID, text=f"Voice message from {user_identifier}")
-            await update.message.reply_text("Your voice message has been forwarded.")
-        elif update.message.sticker:
-            await context.bot.send_sticker(chat_id=OWNER_CHAT_ID, sticker=update.message.sticker.file_id)
-            await context.bot.send_message(chat_id=OWNER_CHAT_ID, text=f"Sticker from {user_identifier}")
-            await update.message.reply_text("Your sticker has been forwarded.")
-        elif update.message.video_note:
-            await context.bot.send_video_note(chat_id=OWNER_CHAT_ID, video_note=update.message.video_note.file_id)
-            await context.bot.send_message(chat_id=OWNER_CHAT_ID, text=f"Video note from {user_identifier}")
-            await update.message.reply_text("Your video note has been forwarded.")
-        elif update.message.location:
-            await context.bot.send_message(chat_id=OWNER_CHAT_ID, text=f"Location from {user_identifier}: {update.message.location.latitude}, {update.message.location.longitude}")
-            await update.message.reply_text("Your location has been forwarded.")
-        elif update.message.contact:
-            contact = update.message.contact
-            await context.bot.send_message(chat_id=OWNER_CHAT_ID, text=f"Contact from {user_identifier}: {contact.first_name} {contact.last_name}, {contact.phone_number}")
-            await update.message.reply_text("Your contact info has been forwarded.")
-        else:
-            await update.message.reply_text("Unsupported file type.")
-    
+        user = await context.bot.get_chat(username)
+        return user.id
     except Exception as e:
-        logging.error(f"Error forwarding file: {e}")
-        await update.message.reply_text("There was an issue forwarding your file. Please try again.")
+        print(f"Error resolving username to chat_id: {e}")
+        return None
 
-# Error handler
-async def handle_error(update: object, context: CallbackContext) -> None:
-    logging.error(f"Update {update} caused error {context.error}")
-    await context.bot.send_message(chat_id=OWNER_CHAT_ID, text=f"Error: {context.error}")
-
-# Restart bot function
-async def restart_bot(application: Application):
-    logging.info("Shutting down bot...")
-    if application.running:
-        await application.shutdown()
-    await application.stop()
-    logging.info("Bot shut down successfully.")
-
-# Main function
+# Main function with restart mechanism
 def main():
-    while True:
+    while True:  # Start an infinite loop for restart handling
         try:
+            # Create the application
             application = Application.builder().token(BOT_TOKEN).build()
 
+            # Add handlers
             application.add_handler(CommandHandler("start", start))
             application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, forward_message))
             application.add_handler(MessageHandler(filters.ALL & ~filters.TEXT, forward_file))
 
-            application.add_error_handler(handle_error)
+            # Start the bot
+            print("Bot is running...")
+            application.run_polling()
 
-            logging.info("Bot is running...")
-            application.run_polling(allowed_updates=Update.ALL_TYPES, timeout=300, poll_interval=10)
-
-        except (TimedOut, NetworkError, RetryAfter, BadRequest) as e:
-            logging.error(f"Bot encountered a network error or timeout: {e}. Restarting...")
-            time.sleep(5)  # Delay before restarting
         except Exception as e:
-            logging.error(f"Bot encountered an error: {e}. Restarting...")
-            time.sleep(5)  # Delay before restarting
-
-        finally:
-            logging.info("Restarting bot...")
-            time.sleep(5)  # Delay to avoid a rapid restart loop
+            print(f"Bot encountered an error: {e}")
+            print("Restarting bot...")
+            time.sleep(5)  # Wait for a while before restarting the bot to prevent rapid restarts
 
 if __name__ == "__main__":
     main()
