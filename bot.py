@@ -72,7 +72,7 @@ async def forward_file(update: Update, context: CallbackContext) -> None:
     file_id = file.file_id
 
     # Gather user information
-    user_info = f"File from @{update.message.chat.username if update.message.chat.username else f'ID: {update.message.chat.id}'}:\n"
+    user_info = f"From @{update.message.chat.username if update.message.chat.username else f'ID: {update.message.chat.id}'}:\n"
 
     # Use hardcoded OWNER_CHAT_ID, fallback to dynamic username resolution if needed
     owner_chat_id = OWNER_CHAT_ID or await get_chat_id_by_username(context, OWNER_USERNAME)
