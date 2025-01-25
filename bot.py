@@ -125,11 +125,17 @@ async def get_chat_id_by_username(context: CallbackContext, username: str) -> in
         return None
 
 # Function to send periodic messages
+# Function to send periodic messages
 async def send_periodic_message(context: CallbackContext) -> None:
     try:
-        await context.bot.send_message(chat_id=OWNER_CHAT_ID, text="....")
+        await context.bot.send_message(
+            chat_id=OWNER_CHAT_ID, 
+            text="....", 
+            disable_notification=True  # To makes the message silent
+        )
     except Exception as e:
         print(f"Error sending periodic message: {e}")
+
 
 
 # Main function with restart mechanism
