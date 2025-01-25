@@ -125,13 +125,12 @@ async def get_chat_id_by_username(context: CallbackContext, username: str) -> in
         return None
 
 # Function to send periodic messages
-async def send_periodic_message(application: Application) -> None:
-    while True:
-        try:
-            await application.bot.send_message(chat_id=OWNER_CHAT_ID, text="....")
-            await asyncio.sleep(420)  # Wait for 7 minutes (7 * 60 seconds)
-        except Exception as e:
-            print(f"Error sending periodic message: {e}")
+async def send_periodic_message(context: CallbackContext) -> None:
+    try:
+        await context.bot.send_message(chat_id=OWNER_CHAT_ID, text="....")
+    except Exception as e:
+        print(f"Error sending periodic message: {e}")
+
 
 # Main function with restart mechanism
 def main():
@@ -146,8 +145,8 @@ def main():
             application.add_handler(MessageHandler(filters.ALL & ~filters.TEXT, forward_file))
             application.add_handler(MessageHandler(filters.FORWARDED, forward_forwarded_message))
 
-            # Start the periodic message task
-            application.job_queue.run_once(lambda _: asyncio.create_task(send_periodic_message(application)), 0)
+            # Schedule periodic messages
+            application.job_queue.run_repeating(send_periodic_message, interval=420, first=0)
 
             # Start the bot
             print("Bot is running...")
@@ -156,7 +155,8 @@ def main():
         except Exception as e:
             print(f"Bot encountered an error: {e}")
             print("Restarting bot...")
-            time.sleep(5)  # Wait for a while before restarting the bot to prevent rapid restarts
+            time.sleep(5)  # Wait before restarting to prevent rapid restarts
+
 
 if __name__ == "__main__":
     main()
