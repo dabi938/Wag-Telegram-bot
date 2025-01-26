@@ -1,9 +1,7 @@
 import time
-from telegram import Bot, Update
+from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackContext, filters
 import asyncio
-import logging
-from flask import Flask, request
 
 # Replace with your Bot Token
 BOT_TOKEN = '7577327684:AAHBVsQWRg5S54HdYWSZ5fsqTCOtfRAfby8'
@@ -14,22 +12,15 @@ OWNER_CHAT_ID = 6742597078  # Replace with the actual Chat ID
 # Replace with the username of the bot owner
 OWNER_USERNAME = '@phinex938'
 
-# Initialize the bot and application
-bot = Bot(token=BOT_TOKEN)
-application = Application.builder().token(BOT_TOKEN).build()
-
 # To track sent messages and avoid duplication
 sent_messages = set()
-
-# Flask app for webhook
-app = Flask(__name__)
 
 # Start command handler
 async def start(update: Update, context: CallbackContext) -> None:
     if update.message.chat_id == OWNER_CHAT_ID:
         # Do not send the message to the owner
         return
-    await update.message.reply_text("Hi! Welcome, I'll forward your message or any type of file to Phinex.")
+    await update.message.reply_text("Hi! Wellcome I'll forward Your message or any type of file to Phinex.")
 
 # Message handler
 async def forward_message(update: Update, context: CallbackContext) -> None:
@@ -134,47 +125,48 @@ async def get_chat_id_by_username(context: CallbackContext, username: str) -> in
         return None
 
 # Function to send periodic messages
+# Function to send periodic messages
 async def send_periodic_message(context: CallbackContext) -> None:
     try:
         await context.bot.send_message(
             chat_id=OWNER_CHAT_ID, 
             text="....", 
-            disable_notification=True  # To make the message silent
+            disable_notification=True  # To makes the message silent
         )
     except Exception as e:
         print(f"Error sending periodic message: {e}")
 
-# Webhook route to receive updates
-@app.route('/webhook', methods=['POST'])
-def webhook():
-    json_str = request.get_data(as_text=True)
-    update = Update.de_json(json_str, bot)
-    application.process_update(update)
-    return '', 200
+
 
 # Main function with restart mechanism
 def main():
-    # Create the application
-    application = Application.builder().token(BOT_TOKEN).build()
+    while True:  # Start an infinite loop for restart handling
+        try:
+            # Create the application
+            application = Application.builder().token(BOT_TOKEN).build()
 
-    # Add handlers
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, forward_message))
-    application.add_handler(MessageHandler(filters.ALL & ~filters.TEXT, forward_file))
-    application.add_handler(MessageHandler(filters.FORWARDED, forward_forwarded_message))
+            # Add handlers
+            application.add_handler(CommandHandler("start", start))
+            application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, forward_message))
+            application.add_handler(MessageHandler(filters.ALL & ~filters.TEXT, forward_file))
+            application.add_handler(MessageHandler(filters.FORWARDED, forward_forwarded_message))
 
-    # Schedule periodic messages
-    application.job_queue.run_repeating(send_periodic_message, interval=420, first=0)
+            # Schedule periodic messages
+            application.job_queue.run_repeating(send_periodic_message, interval=420, first=0)
 
-    # Set webhook URL
-    webhook_url = 'https://wag-telegram-bot.onrender.com'
-    application.bot.set_webhook(url=webhook_url)
+            # Start the bot
+            print("Bot is running...")
+            application.run_polling()
 
-    # Run the Flask app (This should be done in a separate thread if running alongside other services)
-    app.run(host='0.0.0.0', port=5000)
+        except Exception as e:
+            print(f"Bot encountered an error: {e}")
+            print("Restarting bot...")
+            time.sleep(5)  # Wait before restarting to prevent rapid restarts
+
 
 if __name__ == "__main__":
     main()
+
 
 
 
