@@ -36,8 +36,12 @@ async def forward_message(update: Update, context: CallbackContext) -> None:
     if user_message in sent_messages:
         return
     sent_messages.add(user_message)
-    await context.bot.send_message(chat_id=OWNER_CHAT_ID, text=user_info + user_message)
-    await update.message.reply_text("Your message has been sent!")
+    try:
+        await context.bot.send_message(chat_id=OWNER_CHAT_ID, text=user_info + user_message)
+        await update.message.reply_text("Your message has been sent!")
+        logging.info(f"Message forwarded to {OWNER_CHAT_ID}: {user_message}")
+    except Exception as e:
+        logging.error(f"Failed to forward message: {e}")
 
 # File handler
 async def forward_file(update: Update, context: CallbackContext) -> None:
@@ -46,8 +50,12 @@ async def forward_file(update: Update, context: CallbackContext) -> None:
         await update.message.reply_text("Unsupported file type.")
         return
     user_info = f"From @{update.message.chat.username if update.message.chat.username else f'ID: {update.message.chat.id}'}:\n"
-    await context.bot.send_document(chat_id=OWNER_CHAT_ID, document=file.file_id, caption=user_info)
-    await update.message.reply_text("Your file has been sent!")
+    try:
+        await context.bot.send_document(chat_id=OWNER_CHAT_ID, document=file.file_id, caption=user_info)
+        await update.message.reply_text("Your file has been sent!")
+        logging.info(f"File forwarded to {OWNER_CHAT_ID}: {file.file_id}")
+    except Exception as e:
+        logging.error(f"Failed to forward file: {e}")
 
 # Webhook route
 @app.route('/webhook', methods=['POST'])
@@ -56,7 +64,7 @@ def webhook():
         json_str = request.get_data(as_text=True)
         json_data = json.loads(json_str)  # Deserialize JSON string into a dictionary
         update = Update.de_json(json_data, application.bot)
-        application.process_update(update)
+        asyncio.run(application.process_update(update))  # Run asynchronously
     except Exception as e:
         app.logger.error(f"Error processing webhook: {e}")
     return '', 200
@@ -64,13 +72,15 @@ def webhook():
 # Periodic message sender
 async def send_periodic_message(context: CallbackContext) -> None:
     try:
+        logging.info("Sending periodic message to prevent inactivity.")
         await context.bot.send_message(
             chat_id=OWNER_CHAT_ID, 
             text="Periodic message to prevent bot inactivity.", 
-            disable_notification=True  # Sends the message silently
+            disable_notification=True
         )
     except Exception as e:
         logging.error(f"Error sending periodic message: {e}")
+
 
 # Application setup
 def setup_application():
