@@ -3,6 +3,8 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackContext, filters
 import logging
 import os
+import json
+import asyncio
 
 # Replace with your Bot Token
 BOT_TOKEN = '7577327684:AAHBVsQWRg5S54HdYWSZ5fsqTCOtfRAfby8'
@@ -50,9 +52,13 @@ async def forward_file(update: Update, context: CallbackContext) -> None:
 # Webhook route
 @app.route('/webhook', methods=['POST'])
 def webhook():
-    json_str = request.get_data(as_text=True)
-    update = Update.de_json(json_str, application.bot)
-    application.process_update(update)
+    try:
+        json_str = request.get_data(as_text=True)
+        json_data = json.loads(json_str)  # Deserialize JSON string into a dictionary
+        update = Update.de_json(json_data, application.bot)
+        application.process_update(update)
+    except Exception as e:
+        app.logger.error(f"Error processing webhook: {e}")
     return '', 200
 
 # Periodic message sender
@@ -76,6 +82,11 @@ def setup_application():
     application.job_queue.run_repeating(send_periodic_message, interval=300, first=0)  # Every 5 minutes
     return application
 
+# Flask route to confirm server is running
+@app.route('/', methods=['GET'])
+def index():
+    return "The bot is running!", 200
+
 if __name__ == '__main__':
     # Initialize the bot application
     app_port = int(os.environ.get('PORT', 5000))
@@ -83,8 +94,11 @@ if __name__ == '__main__':
 
     application = setup_application()
 
-    # Set the webhook
-    application.bot.set_webhook(webhook_url)
+    # Set the webhook asynchronously
+    try:
+        asyncio.run(application.bot.set_webhook(webhook_url))  # Await the set_webhook method
+    except Exception as e:
+        logging.error(f"Error setting webhook: {e}")
 
     # Run the Flask app
     app.run(host='0.0.0.0', port=app_port)
