@@ -1,5 +1,5 @@
 #!/bin/bash
-python3 demo.py
+python3 bot.py
 
 
 # '7577327684:AAHBVsQWRg5S54HdYWSZ5fsqTCOtfRAfby8'
